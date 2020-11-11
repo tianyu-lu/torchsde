@@ -195,17 +195,20 @@ def make_segmented_cosine_data():
 
 
 def make_repressilator_data():
-    ts_ = np.linspace(1.0, 40.0, 9500)  # from t=50 to t=950
-    ts_ext_ = np.array([0.0], list(ts_) + [41.0])
-    ts_vis_ = np.linspace(0.0, 40.0, 9500)
+    ts_ = np.linspace(1.0, 40.0, 900)  # from t=50 to t=950
+    ts_ext_ = np.array([0.0] + list(ts_) + [41.0])
+    ts_vis_ = np.linspace(0.0, 40.0, 900)
     ts = torch.tensor(ts_).float()
     ts_ext = torch.tensor(ts_ext_).float()
     ts_vis = torch.tensor(ts_vis_).float()
 
     df = pd.read_csv("data/StochasticRepressilator.csv")
     gfp_ = np.array(df["p3"]).squeeze()[500:9500:10]
-    gfp_ = 2*(gfp - torch.min(gfp)) / (torch.max(gfp) - torch.min(gfp))
+    gfp_ = 2*(gfp_ - np.min(gfp_)) / (np.max(gfp_) - np.min(gfp_))
+    gfp_ = gfp_.reshape(-1,1)
     gfp = torch.tensor(gfp_).float().to(device)
+    print("ys", gfp_.shape)
+    print("ts", ts_.shape)
     return Data(ts_, ts_ext_, ts_vis_, ts, ts_ext, ts_vis, gfp, gfp_)
 
 
@@ -360,6 +363,8 @@ def main():
         zs, kl = model(ts=ts_ext, batch_size=args.batch_size)
         zs = zs.squeeze()
         zs = zs[1:-1]  # Drop first and last which are only used to penalize out-of-data region and spread uncertainty.
+        print("zs likelihood", zs.shape)
+        print("ys likelihood", ys.shape)
 
         likelihood_constructor = {"laplace": distributions.Laplace, "normal": distributions.Normal}[args.likelihood]
         likelihood = likelihood_constructor(loc=zs, scale=args.scale)
@@ -394,7 +399,7 @@ if __name__ == '__main__':
     parser.add_argument('--train-dir', type=str, required=True)
     parser.add_argument('--save-ckpt', type=str2bool, default=False, const=True, nargs="?")
 
-    parser.add_argument('--data', type=str, default='segmented_cosine', choices=['segmented_cosine', 'irregular_sine'])
+    parser.add_argument('--data', type=str, default='segmented_cosine', choices=['segmented_cosine', 'irregular_sine', 'repressilator'])
     parser.add_argument('--kl-anneal-iters', type=int, default=100, help='Number of iterations for linear KL schedule.')
     parser.add_argument('--train-iters', type=int, default=5000, help='Number of iterations for training.')
     parser.add_argument('--pause-iters', type=int, default=50, help='Number of iterations before pausing.')
