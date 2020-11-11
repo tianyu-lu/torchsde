@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pandas as pd
+
 import argparse
 import logging
 import math
@@ -192,6 +194,21 @@ def make_segmented_cosine_data():
     return Data(ts_, ts_ext_, ts_vis_, ts, ts_ext, ts_vis, ys, ys_)
 
 
+def make_repressilator_data():
+    ts_ = np.linspace(1.0, 40.0, 9500)  # from t=50 to t=950
+    ts_ext_ = np.array([0.0], list(ts_) + [41.0])
+    ts_vis_ = np.linspace(0.0, 40.0, 9500)
+    ts = torch.tensor(ts_).float()
+    ts_ext = torch.tensor(ts_ext_).float()
+    ts_vis = torch.tensor(ts_vis_).float()
+
+    df = pd.read_csv("data/StochasticRepressilator.csv")
+    gfp_ = np.array(df["p3"]).squeeze()[500:9500:10]
+    gfp_ = 2*(gfp - torch.min(gfp)) / (torch.max(gfp) - torch.min(gfp))
+    gfp = torch.tensor(gfp_).float().to(device)
+    return Data(ts_, ts_ext_, ts_vis_, ts, ts_ext, ts_vis, gfp, gfp_)
+
+
 def make_irregular_sine_data():
     ts_ = np.sort(np.random.uniform(low=0.4, high=1.6, size=16))
     ts_ext_ = np.array([0.] + list(ts_) + [2.0])
@@ -208,7 +225,8 @@ def make_irregular_sine_data():
 def make_data():
     data_constructor = {
         'segmented_cosine': make_segmented_cosine_data,
-        'irregular_sine': make_irregular_sine_data
+        'irregular_sine': make_irregular_sine_data,
+        'repressilator': make_repressilator_data
     }[args.data]
     return data_constructor()
 
